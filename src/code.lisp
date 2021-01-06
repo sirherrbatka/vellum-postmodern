@@ -12,7 +12,9 @@
          (column-count (vellum.header:column-count header))
          (row (make-array column-count :initial-element :null))
          ((:slots %query) object)
-         (query (s-sql:sql-compile %query)))
+         (query (etypecase %query
+                  (list (s-sql:sql-compile %query))
+                  (string %query))))
     (vellum.header:set-row row)
     (cl-postgres:exec-query
      postmodern:*database* query
