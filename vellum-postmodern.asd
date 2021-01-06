@@ -9,13 +9,11 @@
   :depends-on ( :iterate
                 :serapeum
                 :vellum
-                :metabang-bind
                 :alexandria
                 :cl-postgres
                 :s-sql
                 :documentation-utils-extensions
-                :postmodern
-                :closer-mop)
+                :postmodern)
   :serial T
   :pathname "src"
   :components ((:file "package")
