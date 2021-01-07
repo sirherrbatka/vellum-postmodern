@@ -80,8 +80,9 @@
                             (for i from 0 below column-count)
                             (setf (vellum.column:iterator-at iterator i)
                                   (funcall key (aref content i)))
-                            (funcall function)
-                            (finally (vellum.column:move-iterator iterator 1)))))
+                            (finally
+                             (funcall function)
+                             (vellum.column:move-iterator iterator 1)))))
         (vellum.column:finish-iterator iterator)
         (make class
               :header header
