@@ -60,30 +60,20 @@
                              (body nil)
                              (header (apply #'vellum.header:make-header
                                             header-class columns)))
-  (vellum:with-header (header)
-    (let* ((column-count (vellum.header:column-count header))
-           (function (if (null body)
-                         (constantly nil)
-                         (vellum:bind-row-closure body)))
-           (columns (make-array column-count)))
-      (iterate
-        (for i from 0 below column-count)
-        (setf (aref columns i)
-              (vellum.column:make-sparse-material-column
-               :element-type (vellum.header:column-type header i))))
-      (let* ((iterator (vellum.column:make-iterator columns))
-             (vellum.header:*row* (serapeum:box (make 'vellum.table:setfable-table-row
-                                                      :iterator iterator))))
-        (cl-ds:traverse object
-                        (lambda (content)
-                          (iterate
-                            (for i from 0 below column-count)
-                            (setf (vellum.column:iterator-at iterator i)
-                                  (funcall key (aref content i)))
-                            (finally
-                             (funcall function)
-                             (vellum.column:move-iterator iterator 1)))))
-        (vellum.column:finish-iterator iterator)
-        (make class
-              :header header
-              :columns columns)))))
+  (let* ((function (if (null body)
+                       (constantly nil)
+                       (vellum:bind-row-closure body)))
+         (table (vellum:make-table :class class :header header))
+         (transformation (vellum.table:transformation table nil
+                                                      :in-place t))
+         (fn (lambda (content)
+               (vellum:transform-row
+                transformation
+                (lambda ()
+                  (iterate
+                    (for c in-vector content)
+                    (for i from 0)
+                    (setf (vellum:rr i) (funcall key c))
+                    (finally (funcall function))))))))
+    (cl-ds:across object fn)
+    (vellum:transformation-result transformation)))
