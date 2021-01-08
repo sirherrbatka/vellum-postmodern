@@ -7,6 +7,10 @@
            :reader read-query)))
 
 
+(defun postgres-query (query header)
+  (make 'postgres-query :query query :header header))
+
+
 (defmethod cl-ds:traverse ((object postgres-query) function)
   (bind ((header (vellum.header:read-header object))
          (column-count (vellum.header:column-count header))
@@ -54,7 +58,11 @@
 (defmethod vellum:copy-from ((format (eql ':postmodern))
                              input
                              &rest options
-                             &key header)
+                             &key
+                               (header-class 'vellum.header:standard-header)
+                               (columns '())
+                               (header (apply #'vellum.header:make-header
+                                              header-class columns)))
   (apply #'vellum:to-table
-         (make 'postgres-query :query input :header header)
+         (postgres-query input header)
          options))
