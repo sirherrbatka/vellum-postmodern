@@ -60,9 +60,7 @@
                              (body nil)
                              (header (apply #'vellum.header:make-header
                                             header-class columns)))
-  (let* ((function (if (null body)
-                       (constantly nil)
-                       (vellum:bind-row-closure body)))
+  (let* ((function (vellum:bind-row-closure body))
          (table (vellum:make-table :class class :header header))
          (transformation (vellum.table:transformation table nil
                                                       :in-place t))
