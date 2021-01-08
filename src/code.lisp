@@ -1,36 +1,44 @@
 (cl:in-package #:vellum-postmodern)
 
 
-(defclass postgres-query (cl-ds:traversable)
+(defclass postgres-query (vellum.header:frame-range-mixin
+                          cl-ds:traversable)
   ((%query :initarg :query
-           :type list
            :reader read-query)))
 
 
 (defmethod cl-ds:traverse ((object postgres-query) function)
-  (bind ((header (vellum.header:header))
+  (bind ((header (vellum.header:read-header object))
          (column-count (vellum.header:column-count header))
-         (row (make-array column-count :initial-element :null))
          ((:slots %query) object)
          (query (etypecase %query
                   (list (s-sql:sql-compile %query))
                   (string %query))))
-    (vellum.header:set-row row)
-    (cl-postgres:exec-query
-     postmodern:*database* query
-     (cl-postgres:row-reader (fields)
-       (unless (= column-count (length fields))
-         (error "Number of columns in the header does not match number of selected fields in query."))
-       (iterate
-         (while (cl-postgres:next-row))
+    (vellum.header:with-header (header)
+      (cl-postgres:exec-query
+       postmodern:*database* query
+       (cl-postgres:row-reader (fields)
+         (unless (= column-count (length fields))
+           (error "Number of columns in the header does not match number of selected fields in query."))
          (iterate
-           (for i from 0 below column-count)
-           (setf (aref row i) (cl-postgres:next-field (elt fields i))))
-         (funcall function row))))
+           (while (cl-postgres:next-row))
+           (iterate
+             (with row = (make-array column-count))
+             (for i from 0 below column-count)
+             (for value = (cl-postgres:next-field (elt fields i)))
+             (vellum.header:check-predicate header i value)
+             (setf (aref row i) value)
+             (finally
+              (vellum.header:set-row row)
+              (funcall function row)))))))
     object))
 
 
 (defmethod cl-ds:across ((object postgres-query) function)
+  (cl-ds:traverse object function))
+
+
+(defmethod cl-ds.alg.meta:across-aggregate ((object postgres-query) function)
   (cl-ds:traverse object function))
 
 
@@ -44,34 +52,9 @@
 
 
 (defmethod vellum:copy-from ((format (eql ':postmodern))
-                            (input list)
-                            &rest options)
+                             input
+                             &rest options
+                             &key header)
   (apply #'vellum:to-table
-         (make 'postgres-query :query input)
+         (make 'postgres-query :query input :header header)
          options))
-
-
-(defmethod vellum:to-table ((object postgres-query)
-                           &key
-                             (key #'identity)
-                             (class 'vellum.table:standard-table)
-                             (header-class 'vellum.header:standard-header)
-                             (columns '())
-                             (body nil)
-                             (header (apply #'vellum.header:make-header
-                                            header-class columns)))
-  (let* ((function (vellum:bind-row-closure body))
-         (table (vellum:make-table :class class :header header))
-         (transformation (vellum.table:transformation table nil
-                                                      :in-place t))
-         (fn (lambda (content)
-               (vellum:transform-row
-                transformation
-                (lambda ()
-                  (iterate
-                    (for c in-vector content)
-                    (for i from 0)
-                    (setf (vellum:rr i) (funcall key c))
-                    (finally (funcall function))))))))
-    (cl-ds:across object fn)
-    (vellum:transformation-result transformation)))
