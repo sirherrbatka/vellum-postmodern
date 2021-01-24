@@ -30,7 +30,16 @@
              (with row = (make-array column-count))
              (for i from 0 below column-count)
              (for value = (cl-postgres:next-field (elt fields i)))
-             (vellum.header:check-predicate header i value)
+             (tagbody main
+                (restart-case (vellum.header:check-predicate header i value)
+                  (set-to-null ()
+                    :report "Set the row position to :null."
+                    (setf value :null))
+                  (provide-new-value (v)
+                    :report "Enter the new value."
+                    :interactive vellum.header:read-new-value
+                    (setf value v)
+                    (go main))))
              (setf (aref row i) value)
              (finally
               (vellum.header:set-row row)
