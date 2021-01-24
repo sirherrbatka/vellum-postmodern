@@ -29,20 +29,22 @@
            (iterate
              (with row = (make-array column-count))
              (for i from 0 below column-count)
-             (for value = (cl-postgres:next-field (elt fields i)))
              (tagbody main
+                (for value = (cl-postgres:next-field (elt fields i)))
+                check
                 (restart-case (vellum.header:check-predicate header i value)
                   (skip-row ()
                     :report "skip this row."
                     (leave))
                   (set-to-null ()
                     :report "Set the row position to :null."
-                    (setf value :null))
+                    (setf value :null)
+                    (go check))
                   (provide-new-value (v)
                     :report "Enter the new value."
                     :interactive vellum.header:read-new-value
                     (setf value v)
-                    (go main))))
+                    (go check))))
              (setf (aref row i) value)
              (finally
               (vellum.header:set-row row)
