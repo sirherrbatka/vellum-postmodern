@@ -32,6 +32,9 @@
              (for value = (cl-postgres:next-field (elt fields i)))
              (tagbody main
                 (restart-case (vellum.header:check-predicate header i value)
+                  (skip-row ()
+                    :report "skip this row."
+                    (leave))
                   (set-to-null ()
                     :report "Set the row position to :null."
                     (setf value :null))
