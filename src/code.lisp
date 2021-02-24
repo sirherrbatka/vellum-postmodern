@@ -66,7 +66,8 @@
 
 (defmethod cl-ds:clone ((object postgres-query))
   (make 'postgres-query
-        :query (read-query object)))
+        :query (read-query object)
+        :header (vellum.header:read-header object)))
 
 
 (defmethod vellum:copy-from ((format (eql ':postmodern))
