@@ -81,3 +81,21 @@
   (apply #'vellum:to-table
          (postgres-query input header)
          options))
+
+
+(defmethod vellum:copy-to ((format (eql ':postmodern))
+                           table-name
+                           input
+                           &rest options &key (batch-size 50))
+  (declare (ignore options))
+  (let ((column-count (vellum:column-count input)))
+    (vellum:pipeline (input)
+      (cl-ds.alg:on-each (vellum:bind-row ()
+                           (cl-ds.utils:transform #'vellum:rr (iota column-count))))
+      (cl-ds.alg:in-batches batch-size)
+      (cl-ds.alg:to-list
+       :after (lambda (batch)
+                (postmodern:execute (:insert-rows-into table-name
+                                     :values batch))
+                nil))))
+  input)
