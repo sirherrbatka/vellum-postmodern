@@ -1,6 +1,3 @@
-(cl:in-package #:cl-user)
-
-
 (asdf:defsystem vellum-postmodern
   :name "vellum-postmodern"
   :description "Postgres support for Vellum Data Frames (via postmodern)."
