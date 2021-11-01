@@ -1,7 +1,7 @@
 (asdf:defsystem vellum-postmodern
   :name "vellum-postmodern"
   :description "Postgres support for Vellum Data Frames (via postmodern)."
-  :version "0.0.0"
+  :version "1.0.0"
   :license "BSD simplified"
   :author "Marek Kochanowicz"
   :depends-on ( :iterate
