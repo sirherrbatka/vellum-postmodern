@@ -12,43 +12,53 @@
 
 
 (defmethod cl-ds:traverse ((object postgres-query) function)
+  (declare (optimize (speed 3) (debug 0) (safety 0)))
   (bind ((header (vellum.header:read-header object))
          (column-count (vellum.header:column-count header))
+         (predicates (map 'vector
+                          (curry #'vellum.header:column-predicate header)
+                          (iota column-count)))
          ((:slots %query) object)
          (query (etypecase %query
                   (list (s-sql:sql-compile %query))
                   (string %query))))
+    (declare (type fixnum column-count))
     (vellum.header:with-header (header)
       (cl-postgres:exec-query
        postmodern:*database* query
        (cl-postgres:row-reader (fields)
+         (declare (type simple-vector fields))
          (unless (= column-count (length fields))
            (error "Number of columns in the header does not match number of selected fields in query."))
          (iterate
            (while (cl-postgres:next-row))
            (iterate
+             (declare (type fixnum i)
+                      (type simple-vector row))
              (with row = (make-array column-count))
              (for i from 0 below column-count)
              (tagbody main
-                (for value = (cl-postgres:next-field (elt fields i)))
+                (for value = (cl-postgres:next-field (svref fields i)))
                 check
-                (restart-case (vellum.header:check-predicate header i value)
-                  (skip-row ()
-                    :report "skip this row."
-                    (leave))
-                  (set-to-null ()
-                    :report "Set the row position to :null."
-                    (setf value :null)
-                    (go check))
-                  (provide-new-value (v)
-                    :report "Enter the new value."
-                    :interactive vellum.header:read-new-value
-                    (setf value v)
-                    (go check))))
-             (setf (aref row i) value)
+                (unless (eq (svref predicates i) 'vellum.header:constantly-t)
+                  (restart-case (vellum.header:check-predicate header i value)
+                    (skip-row ()
+                      :report "skip this row."
+                      (leave))
+                    (set-to-null ()
+                      :report "Set the row position to :null."
+                      (setf value :null)
+                      (go check))
+                    (provide-new-value (v)
+                      :report "Enter the new value."
+                      :interactive vellum.header:read-new-value
+                      (setf value v)
+                      (go check)))))
+             (setf (svref row i) value)
              (finally
               (vellum.header:set-row row)
-              (funcall function row)))))))
+              (let ((vellum.header:*validate-predicates* nil))
+                (funcall function row))))))))
     object))
 
 
@@ -74,10 +84,9 @@
                              input
                              &rest options
                              &key
-                               (header-class 'vellum.header:standard-header)
                                (columns '())
                                (header (apply #'vellum.header:make-header
-                                              header-class columns)))
+                                              columns)))
   (apply #'vellum:to-table
          (postgres-query input header)
          options))

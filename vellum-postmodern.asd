@@ -4,14 +4,14 @@
   :version "1.0.0"
   :license "BSD simplified"
   :author "Marek Kochanowicz"
-  :depends-on ( :iterate
-                :serapeum
-                :vellum
-                :alexandria
-                :cl-postgres
-                :s-sql
-                :documentation-utils-extensions
-                :postmodern)
+  :depends-on ( #:iterate
+                #:serapeum
+                (:version #:vellum ((>= "1.0.0")))
+                #:alexandria
+                #:cl-postgres
+                #:s-sql
+                #:documentation-utils-extensions
+                #:postmodern)
   :serial T
   :pathname "src"
   :components ((:file "package")
