@@ -15,9 +15,6 @@
   (declare (optimize (speed 3) (debug 0) (safety 0)))
   (bind ((header (vellum.header:read-header object))
          (column-count (vellum.header:column-count header))
-         (predicates (map 'vector
-                          (curry #'vellum.header:column-predicate header)
-                          (iota column-count)))
          ((:slots %query) object)
          (query (etypecase %query
                   (list (s-sql:sql-compile %query))
@@ -37,28 +34,11 @@
                       (type simple-vector row))
              (with row = (make-array column-count))
              (for i from 0 below column-count)
-             (tagbody main
-                (for value = (cl-postgres:next-field (svref fields i)))
-                check
-                (unless (eq (svref predicates i) 'vellum.header:constantly-t)
-                  (restart-case (vellum.header:check-predicate header i value)
-                    (skip-row ()
-                      :report "skip this row."
-                      (leave))
-                    (set-to-null ()
-                      :report "Set the row position to :null."
-                      (setf value :null)
-                      (go check))
-                    (provide-new-value (v)
-                      :report "Enter the new value."
-                      :interactive vellum.header:read-new-value
-                      (setf value v)
-                      (go check)))))
+             (for value = (cl-postgres:next-field (svref fields i)))
              (setf (svref row i) value)
              (finally
               (vellum.header:set-row row)
-              (let ((vellum.header:*validate-predicates* nil))
-                (funcall function row))))))))
+              (funcall function row)))))))
     object))
 
 
