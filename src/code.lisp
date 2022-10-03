@@ -12,7 +12,6 @@
 
 
 (defmethod cl-ds:traverse ((object postgres-query) function)
-  (declare (optimize (speed 3) (debug 0) (safety 0)))
   (bind ((header (vellum.header:read-header object))
          (column-count (vellum.header:column-count header))
          ((:slots %query) object)
@@ -80,7 +79,9 @@
   (let ((column-count (vellum:column-count input)))
     (vellum:pipeline (input)
       (cl-ds.alg:on-each (vellum:bind-row ()
-                           (cl-ds.utils:transform #'vellum:rr (iota column-count))))
+                           (iterate
+                             (for i from 0 below column-count)
+                             (collecting (vellum:rr i)))))
       (cl-ds.alg:in-batches batch-size)
       (cl-ds.alg:to-list
        :after (lambda (batch)

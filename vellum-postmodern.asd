@@ -1,4 +1,4 @@
-(asdf:defsystem vellum-postmodern
+(asdf:defsystem #:vellum-postmodern
   :name "vellum-postmodern"
   :description "Postgres support for Vellum Data Frames (via postmodern)."
   :version "1.0.0"
