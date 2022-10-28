@@ -4,4 +4,5 @@
 (defpackage #:vellum-postmodern
   (:use #:cl #:vellum.aux-package)
   (:export
-   #:postgres-query))
+   #:postgres-query
+   #:prepare-query))

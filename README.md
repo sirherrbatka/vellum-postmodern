@@ -17,4 +17,18 @@ Example
  :columns '(primary-dgns-cd anchip-icd10d-codes pac1 readm-90-days death-in-postdisch history-d-10))
 ```
 
+You can also use prepared queries.
 
+Example
+```
+(defparameter test-query
+  (vellum-postmodern:prepare-query
+    '(:select payments.id :from payments :where (:> payments.id $1))
+    '(1)
+    "query-name-or-optional"))
+
+(vellum:copy-from :postmodern
+                  test-query
+                  :parameters '(1)
+                  :columns '(id created-at))
+```
