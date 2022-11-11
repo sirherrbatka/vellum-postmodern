@@ -4,11 +4,21 @@
 (defclass postgres-query (vellum.header:frame-range-mixin
                           cl-ds:traversable)
   ((%query :initarg :query
-           :reader read-query)))
+           :reader read-query)
+   (%parameters :initarg :parameters
+                :reader read-parameters)
+   (%prepared :initarg :prepared
+              :reader read-prepared)))
 
 
-(defun postgres-query (query header)
-  (make 'postgres-query :query query :header header))
+(defun postgres-query (query header &key (parameters nil parameters-bound-p) (prepared parameters-bound-p))
+  (when (and (not (null parameters)) (not prepared))
+    (error "Parameters are only applicable to prepared queries."))
+  (make 'postgres-query
+        :query query
+        :header header
+        :parameters parameters
+        :prepared prepared))
 
 
 (defmethod cl-ds:traverse ((object postgres-query) function)
@@ -17,27 +27,32 @@
          ((:slots %query) object)
          (query (etypecase %query
                   (list (s-sql:sql-compile %query))
-                  (string %query))))
+                  (string %query)
+                  (symbol (symbol-name %query))))
+         (prepared (read-prepared object))
+         (parameters (read-parameters object))
+         (row-reader
+             (cl-postgres:row-reader (fields)
+               (declare (type simple-vector fields))
+               (unless (= column-count (length fields))
+                 (error "Number of columns in the header does not match number of selected fields in query."))
+               (iterate
+                 (while (cl-postgres:next-row))
+                 (iterate
+                   (declare (type fixnum i)
+                            (type simple-vector row))
+                   (with row = (make-array column-count))
+                   (for i from 0 below column-count)
+                   (for value = (cl-postgres:next-field (svref fields i)))
+                   (setf (svref row i) value)
+                   (finally
+                    (vellum.header:set-row row)
+                    (funcall function row)))))))
     (declare (type fixnum column-count))
     (vellum.header:with-header (header)
-      (cl-postgres:exec-query
-       postmodern:*database* query
-       (cl-postgres:row-reader (fields)
-         (declare (type simple-vector fields))
-         (unless (= column-count (length fields))
-           (error "Number of columns in the header does not match number of selected fields in query."))
-         (iterate
-           (while (cl-postgres:next-row))
-           (iterate
-             (declare (type fixnum i)
-                      (type simple-vector row))
-             (with row = (make-array column-count))
-             (for i from 0 below column-count)
-             (for value = (cl-postgres:next-field (svref fields i)))
-             (setf (svref row i) value)
-             (finally
-              (vellum.header:set-row row)
-              (funcall function row)))))))
+      (if prepared
+          (cl-postgres:exec-prepared postmodern:*database* query parameters row-reader)
+          (cl-postgres:exec-query postmodern:*database* query row-reader)))
     object))
 
 
@@ -64,10 +79,11 @@
                              &rest options
                              &key
                                (columns '())
-                               (header (apply #'vellum.header:make-header
-                                              columns)))
+                               (header (apply #'vellum.header:make-header columns))
+                               (parameters nil parameters-bound-p)
+                               (prepared parameters-bound-p))
   (apply #'vellum:to-table
-         (postgres-query input header)
+         (postgres-query input header :parameters parameters :prepared prepared)
          options))
 
 
