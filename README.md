@@ -17,4 +17,4 @@ Example
  :columns '(primary-dgns-cd anchip-icd10d-codes pac1 readm-90-days death-in-postdisch history-d-10))
 ```
 
-Inserting data into postgres data base is currently unsupported.
+
