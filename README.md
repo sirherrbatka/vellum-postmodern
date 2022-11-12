@@ -17,4 +17,13 @@ Example
  :columns '(primary-dgns-cd anchip-icd10d-codes pac1 readm-90-days death-in-postdisch history-d-10))
 ```
 
+Prepare statements are also supported.
+
+``` common-lisp
+(postmodern:with-connection *connection-parameters*
+  (postmodern:defprepared example-statement (:select '* :from 'example_table))
+  (vellum:copy-from :postmodern example-statement :columns '(id name) :prepared t))
+```
+
+You can also pass arguments to the prepared statement with :parameters option.
 
