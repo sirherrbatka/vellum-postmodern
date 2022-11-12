@@ -3,7 +3,7 @@
 This system adds a basic support for constructing vellum tables from the queries to the postgres database. S-SQL syntax is supported.
 
 Example
-```
+``` common-lisp
 (vellum:copy-from :postmodern
 `(:select 'primary_dgns_cd 'anchip_icd10d_codes
           'pac1 'readm_90_days 'death_in_postdisch
@@ -21,8 +21,8 @@ Prepare statements are also supported.
 
 ``` common-lisp
 (postmodern:with-connection *connection-parameters*
-  (postmodern:defprepared example-statement (:select '* :from 'example_table))
-  (vellum:copy-from :postmodern example-statement :columns '(id name) :prepared t))
+  (cl-postgres:prepare-query postmodern:*database* "test" "select * from test;")
+  (vellum:copy-from :postmodern "test" :columns '(id name) :prepared t))
 ```
 
 You can also pass arguments to the prepared statement with :parameters option.
