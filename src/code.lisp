@@ -71,6 +71,7 @@
 (defmethod cl-ds:clone ((object postgres-query))
   (make 'postgres-query
         :query (read-query object)
+        :prepared (read-prepared object)
         :header (vellum.header:read-header object)))
 
 
