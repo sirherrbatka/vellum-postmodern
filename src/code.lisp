@@ -72,6 +72,7 @@
   (make 'postgres-query
         :query (read-query object)
         :prepared (read-prepared object)
+        :parameters (read-parameters object)
         :header (vellum.header:read-header object)))
 
 
