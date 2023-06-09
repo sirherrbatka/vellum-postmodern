@@ -23,7 +23,9 @@
 
 (defmethod cl-ds:traverse ((object postgres-query) function)
   (bind ((header (vellum.header:read-header object))
-         (column-count (vellum.header:column-count header))
+         (column-count (if (null header)
+                           nil
+                           (vellum.header:column-count header)))
          ((:slots %query) object)
          (query (etypecase %query
                   (list (s-sql:sql-compile %query))
@@ -34,22 +36,26 @@
          (row-reader
              (cl-postgres:row-reader (fields)
                (declare (type simple-vector fields))
+               (when (null header)
+                 (setf column-count (length fields)
+                       header (apply #'vellum.header:make-header (make-list column-count :initial-element nil)))
+                 (vellum.header:write-header header object))
                (unless (= column-count (length fields))
                  (error "Number of columns in the header does not match number of selected fields in query."))
-               (iterate
-                 (while (cl-postgres:next-row))
+               (let ((vellum.header:*header* header))
                  (iterate
-                   (declare (type fixnum i)
-                            (type simple-vector row))
-                   (with row = (make-array column-count))
-                   (for i from 0 below column-count)
-                   (for value = (cl-postgres:next-field (svref fields i)))
-                   (setf (svref row i) value)
-                   (finally
-                    (vellum.header:set-row row)
-                    (funcall function row)))))))
-    (declare (type fixnum column-count))
-    (vellum.header:with-header (header)
+                   (while (cl-postgres:next-row))
+                   (iterate
+                     (declare (type fixnum i)
+                              (type simple-vector row))
+                     (with row = (make-array column-count))
+                     (for i from 0 below (the fixnum column-count))
+                     (for value = (cl-postgres:next-field (svref fields i)))
+                     (setf (svref row i) value)
+                     (finally
+                      (vellum.header:set-row row)
+                      (funcall function row))))))))
+    (let ((vellum.header:*row* (box nil)))
       (if prepared
           (cl-postgres:exec-prepared postmodern:*database* query parameters row-reader)
           (cl-postgres:exec-query postmodern:*database* query row-reader)))
@@ -80,8 +86,10 @@
                              input
                              &rest options
                              &key
-                               (columns '())
-                               (header (apply #'vellum.header:make-header columns))
+                               (columns '() columns-bound-p)
+                               (header (if columns-bound-p
+                                           (apply #'vellum.header:make-header columns)
+                                           nil))
                                (parameters nil parameters-bound-p)
                                (prepared parameters-bound-p))
   (apply #'vellum:to-table
