@@ -100,9 +100,8 @@
 (defmethod vellum:copy-to ((format (eql ':postmodern))
                            table-name
                            input
-                           &rest options &key (batch-size 512))
-  (declare (ignore options)
-           (optimize (debug 3)))
+                           &rest options &key (batch-size 1024))
+  (declare (ignore options))
   (let ((column-count (vellum:column-count input)))
     (postmodern:with-transaction ()
       (vellum:pipeline (input)
