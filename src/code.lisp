@@ -106,9 +106,9 @@
     (postmodern:with-transaction ()
       (vellum:pipeline (input)
                        (cl-ds.alg:on-each (vellum:bind-row ()
-                                                           (iterate
-                                                             (for i from 0 below column-count)
-                                                             (collecting (vellum:rr i)))))
+                                            (iterate
+                                              (for i from 0 below column-count)
+                                              (collecting (vellum:rr i)))))
                        (cl-ds.alg:in-batches batch-size)
                        (cl-ds.alg:to-list
                         :after (lambda (batch)
