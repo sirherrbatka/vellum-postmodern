@@ -105,14 +105,14 @@
   (let ((column-count (vellum:column-count input)))
     (postmodern:with-transaction ()
       (vellum:pipeline (input)
-                       (cl-ds.alg:on-each (vellum:bind-row ()
-                                            (iterate
-                                              (for i from 0 below column-count)
-                                              (collecting (vellum:rr i)))))
-                       (cl-ds.alg:in-batches batch-size)
-                       (cl-ds.alg:to-list
-                        :after (lambda (batch)
-                                 (postmodern:execute (:insert-rows-into table-name
-                                                      :values batch))
-                                 nil)))))
+        (cl-ds.alg:on-each (vellum:bind-row ()
+                             (iterate
+                               (for i from 0 below column-count)
+                               (collecting (vellum:rr i)))))
+        (cl-ds.alg:in-batches batch-size)
+        (cl-ds.alg:to-list
+         :after (lambda (batch)
+                  (postmodern:execute (:insert-rows-into table-name
+                                       :values batch))
+                  nil)))))
   input)
